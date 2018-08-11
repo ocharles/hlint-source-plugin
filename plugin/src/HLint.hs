@@ -4,6 +4,7 @@ module HLint ( plugin ) where
 
 -- base
 import Control.Monad.IO.Class ( liftIO )
+import Data.Maybe ( maybeToList )
 
 -- ghc
 import qualified Bag
@@ -49,6 +50,24 @@ hlintPlugin modSummary = do
   where
 
     ideaToErrMsg dynFlags idea =
+      let
+        errDoc =
+          ErrUtils.errDoc
+            [ Outputable.text ( HLint.ideaHint idea ) ]
+            ( case HLint.ideaTo idea of
+                Just to ->
+                  [ Outputable.hang
+                      ( Outputable.text "Why not:" )
+                      4
+                      ( Outputable.vcat ( map Outputable.text ( lines to ) ) )
+                  ]
+
+                _ ->
+                  []
+            )
+            ( map ( Outputable.text . show ) ( HLint.ideaNote idea ) )
+
+      in
       ( case HLint.ideaSeverity idea of
           HLint.Error ->
             ErrUtils.mkPlainErrMsg
@@ -69,4 +88,4 @@ hlintPlugin modSummary = do
             ( SrcLoc.mkSrcLoc fileName srcSpanStartLine srcSpanStartColumn )
             ( SrcLoc.mkSrcLoc fileName srcSpanEndLine srcSpanEndColumn )
         )
-        ( Outputable.text ( HLint.ideaHint idea ) )
+        ( ErrUtils.formatErrDoc dynFlags errDoc )
